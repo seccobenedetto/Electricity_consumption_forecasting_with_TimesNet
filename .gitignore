@@ -1,5 +1,6 @@
 # FILES TO BE IGNORED
 iizuka_docker/images/
+checkpoints/
 
 # Byte-compiled / optimized / DLL files
 **/__pycache__/
