@@ -10,6 +10,13 @@ plt.switch_backend('agg')
 
 
 def adjust_learning_rate(optimizer, epoch, args):
+    """
+    Here we adjust the learning rate according to the epoch number:
+    - type1: the learning rate is halved every epoch
+    - type2: the learning rate is set to a specific value at certain epochs
+    - type3: the learning rate is kept constant for the first 3 epochs, then decays by 0.9 every epoch
+    - cosine: the learning rate follows a cosine schedule, starting from the initial learning rate and decaying to 0 over the course of training
+    """
     # lr = args.learning_rate * (0.2 ** (epoch // 2))
     if args.lradj == 'type1':
         lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch - 1) // 1))}
@@ -30,35 +37,56 @@ def adjust_learning_rate(optimizer, epoch, args):
 
 
 class EarlyStopping:
+    
     def __init__(self, patience=7, verbose=False, delta=0):
-        self.patience = patience
-        self.verbose = verbose
-        self.counter = 0
-        self.best_score = None
-        self.early_stop = False
-        self.val_loss_min = np.inf
-        self.delta = delta
+        self.patience = patience   # how many times will you tolerate for loss not being on decrease
+        self.verbose = verbose     # whether to print tip info
+        self.counter = 0           # now how many times loss not on decrease
+        self.best_score = None     # best validation performance seen so far
+        self.early_stop = False    # flag: should we stop training?
+        self.val_loss_min = np.inf # best validation loss (for logging + checkpoint message)
+        self.delta = delta         # minimum improvement required to count as “better”
 
     def __call__(self, val_loss, model, path):
-        score = -val_loss
+        score = -val_loss  # convert loss to a score
+        
+        # ================== FIRST EPOCH CASE ======================
         if self.best_score is None:
             self.best_score = score
             self.save_checkpoint(val_loss, model, path)
-        elif score < self.best_score + self.delta:
+
+        # ================== NOT IMPROVEMENT CASE ======================
+        # meaning: current score is not 'delta' better than best_score, representing that 
+        # further training may not bring remarkable improvement in loss. 
+        elif score < self.best_score + self.delta:  # = NOT good enough improvement
             self.counter += 1
             print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            # 'No Improvement' times become higher than patience --> Stop Further Training
             if self.counter >= self.patience:
                 self.early_stop = True
-        else:
+
+        # ================== IMPROVEMENT CASE ======================
+        else: # model's loss is still on decrease, save the now best model and go on training
             self.best_score = score
             self.save_checkpoint(val_loss, model, path)
             self.counter = 0
 
     def save_checkpoint(self, val_loss, model, path):
+    # used for saving the current best model
         if self.verbose:
             print(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
         torch.save(model.state_dict(), path + '/' + 'checkpoint.pth')
         self.val_loss_min = val_loss
+    """
+    'model.state_dict()' is a Python dictionary object that maps each layer to its parameter tensor.
+    It is used to save the model's learned parameters (weights and biases) to a file.
+    Example of dict:
+    {
+        "layer1.weight": tensor(...),
+        "layer1.bias": tensor(...),
+        ...
+    }
+    """
 
 
 class dotdict(dict):

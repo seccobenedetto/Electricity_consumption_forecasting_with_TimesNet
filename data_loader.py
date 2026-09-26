@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
-# the Dataset class is used in general to create custom datasets for PyTorch, and DataLoader is used to load data in batches.
 from sklearn.preprocessing import StandardScaler
 
 
@@ -34,12 +33,13 @@ def data_provider(args, flag):
         seq_len=args.seq_len,
         label_len=args.label_len,
         pred_len=args.pred_len,
-        flag=flag,
-        scale=True
+        flag=flag,  # train/val/test
+        scale=True  # we scale the data to have zero mean and unit variance
     )
 
-    print(f"{flag} samples: {len(dataset)}")
+    print(f"Total {flag} samples found: {len(dataset)}")
 
+    # create a DataLoader for the dataset. The DataLoader will handle batching and shuffling of the data.
     loader = DataLoader(
         dataset,
         batch_size=args.batch_size,
@@ -109,7 +109,7 @@ class ElectricityDataset(Dataset):
         data = df_data.values.astype(np.float32)
 
         # ------------------------------------------------------------
-        # 3. TRAIN/VAL/TEST SPLIT (standard TimesNet-style)
+        # 3. TRAIN/VAL/TEST SPLIT
         # ------------------------------------------------------------
         num_train = int(len(data) * 0.7)
         num_val = int(len(data) * 0.1)

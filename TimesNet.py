@@ -54,7 +54,7 @@ class TimesBlock(nn.Module):
     using a combination of Fast Fourier Transform (FFT) and convolutional operations.
     """
 
-    def __init__(self, configs):    # configs is the configuration defined for TimesBlock
+    def __init__(self, configs):    # configs is the configuration (previously called args)
         super(TimesBlock, self).__init__() 
         self.seq_len = configs.seq_len   # sequence length 
         self.pred_len = configs.pred_len # prediction length
@@ -70,7 +70,7 @@ class TimesBlock(nn.Module):
 
     def forward(self, x):
         B, T, N = x.size()
-            #B: batch size  T: length of time series  N:number of features/channels
+        # B: batch size  T: length of time series  N:number of features/channels
 
         # ======================== FFT ========================
         period_list, period_weight = FFT_for_Period(x, self.k)
@@ -150,13 +150,13 @@ class Model(nn.Module):
 
         self.layer_norm = nn.LayerNorm(configs.d_model)
 
-        # input embedding: simple linear projection (no time features)
+        # input embedding: simple linear projection (no time features) (dim from 321 to 64)
         self.input_projection = nn.Linear(configs.enc_in, configs.d_model)
 
-        # temporal projection: expand T → T + pred_len
+        # temporal projection: expand T → T + pred_len to allow the model to predict future time steps (dim from 96 to 96 + 96=192)
         self.predict_linear = nn.Linear(self.seq_len, self.seq_len + self.pred_len)
 
-        # output projection: back to original dimension
+        # output projection: back to original dimension (dim back from 64 to 321)
         self.output_projection = nn.Linear(configs.d_model, configs.c_out)
 
     def forward(self, x):
