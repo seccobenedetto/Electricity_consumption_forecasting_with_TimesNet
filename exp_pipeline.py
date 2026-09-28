@@ -10,6 +10,7 @@ from data_loader import data_provider
 from tools import EarlyStopping, adjust_learning_rate
 from metrics import metric
 from TimesNet import Model as TimesNet
+from TCN import Model as TCN
 
 
 class Exp_Basic(object):
@@ -58,7 +59,14 @@ class Exp_Long_Term_Forecast(Exp_Basic):
     # -------------------------------------------------------
     def _build_model(self):
 
-        model = TimesNet(self.args).float()
+        if self.args.model == "TimesNet":
+            model = TimesNet(self.args).float()
+
+        elif self.args.model == "TCN":
+            model = TCN(self.args).float()
+
+        else:
+            raise ValueError(f"Unknown model: {self.args.model}")
 
         return model
 

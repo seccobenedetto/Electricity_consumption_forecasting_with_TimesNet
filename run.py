@@ -20,6 +20,7 @@ def main(args):
 
     # this is essentially a string that describes the experiment configuration, used for saving checkpoints and logs
     setting = ( 
+        f"{args.model}_"
         f"sl{args.seq_len}_pl{args.pred_len}_"
         f"dm{args.d_model}_el{args.e_layers}_"
         f"tk{args.top_k}"
@@ -67,7 +68,7 @@ if __name__ == "__main__":
     # ======================
     # MODEL
     # ======================
-    #parser.add_argument("--model", type=str, default="TimesNet")
+    parser.add_argument("--model", type=str, default="TimesNet", choices=["TimesNet", "TCN"], help="Model to use")
     parser.add_argument("--e_layers", type=int, default=2)     # number of sequential TimesBlocks stacked in the model
 
     parser.add_argument("--enc_in", type=int, default=321)     # number of initial input features/channels for the network
