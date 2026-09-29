@@ -4,8 +4,9 @@
 # Hyperparameter grid
 # =========================
 
-PRED_LENS=(96 192 336)
-SEQ_LENS=(96 192)
+# PRED_LENS=(96 192 336)
+# SEQ_LENS=(96 192)
+K_VALUES=( 1 2 3 4 5 6 7 )
 
 mkdir -p logs
 
@@ -13,23 +14,21 @@ mkdir -p logs
 # Run experiments
 # =========================
 
-for seq_len in "${SEQ_LENS[@]}"; do
-  for pred_len in "${PRED_LENS[@]}"; do
+for k_idx in "${K_VALUES[@]}"; do
+  echo "======================================"
+  echo "Running TimesNet | k_idx=$k_idx"
+  echo "======================================"
 
-    echo "======================================"
-    echo "Running TimesNet | seq_len=$seq_len | pred_len=$pred_len"
-    echo "======================================"
+  python -u run.py \
+    --train \
+    --test \
+    --model TimesNet \
+    --top_k "$k_idx" \
+    --d_model 128 \
+    --seq_len 96 \
+    --pred_len 96 2>&1 | tee "logs/TimesNet_k${k_idx}.log"
 
-    python -u run.py \
-      --predict_samples \
-      --model TimesNet \
-      --d_model 128 \
-      --seq_len $seq_len \
-      --pred_len $pred_len \
-      #> logs/TimesNet_${seq_len}_${pred_len}.log 2>&1
-   
-    sleep 2
-  done
+  sleep 5
 done
 
 echo "All experiments completed."
