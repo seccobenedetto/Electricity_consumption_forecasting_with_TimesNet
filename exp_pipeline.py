@@ -11,7 +11,7 @@ from tools import EarlyStopping, adjust_learning_rate
 from metrics import metric
 from TimesNet import Model as TimesNet
 from TCN import Model as TCN
-
+from TimesNet import FFT_for_Period
 
 class Exp_Basic(object):
     """
@@ -361,3 +361,190 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         print(f"Saved in: {save_path}")
 
         return inputs, preds, trues
+
+
+
+    def extract_2d_representations(self, setting, sample_idx=0, channel_idx=0, top_k=5):
+        """
+        Extracts the 2D reshaped representations for a given sample and channel from the test set.
+
+        Parameters:
+        - setting: experiment name (used for saving path)
+        - sample_idx: index of the sample inside the test dataset
+        - channel_idx: which channel (time series) to visualize
+        - top_k: number of dominant periods to extract
+
+        Saved outputs (inside checkpoint folder):
+        - original 1D signal
+        - detected periods
+        - 2D reshaped matrices (one per period)
+        """
+
+        # -------------------------------
+        # Load test data
+        # -------------------------------
+        test_loader = self._get_data('test')[1]
+
+        # -------------------------------
+        # Get the desired sample
+        # -------------------------------
+        current_idx = 0
+        selected_x = None
+
+        for batch_x, batch_y in test_loader:
+            B = batch_x.shape[0]
+
+            if current_idx + B > sample_idx:
+                # sample is inside this batch
+                local_idx = sample_idx - current_idx
+                selected_x = batch_x[local_idx:local_idx+1]  # shape [1, T, C]
+                break
+
+            current_idx += B
+
+        if selected_x is None:
+            raise ValueError("sample_idx out of range")
+
+        # Move to device
+        selected_x = selected_x.float().to(self.device)
+
+        # -------------------------------
+        # Select single channel
+        # -------------------------------
+        # shape: [1, T]
+        x_1d = selected_x[:, :, channel_idx]
+
+        # -------------------------------
+        # Compute FFT-based periods
+        # -------------------------------
+        xf = torch.fft.rfft(x_1d, dim=1)  # [1, T_freq]
+        amplitude = torch.abs(xf).mean(0)  # [T_freq]
+
+        amplitude[0] = 0  # remove DC component
+
+        _, top_list = torch.topk(amplitude, top_k)
+        top_list = top_list.detach().cpu().numpy()
+
+        T = x_1d.shape[1]
+
+        periods = T // top_list  # integer approximation
+
+        # -------------------------------
+        # Prepare saving folder
+        # -------------------------------
+        save_path = os.path.join(self.args.checkpoints, setting)
+        os.makedirs(save_path, exist_ok=True)
+
+        # Convert original signal to numpy
+        x_np = x_1d.detach().cpu().numpy()[0]  # shape [T]
+
+        # Save original signal
+        np.save(os.path.join(save_path, f"x_sample{sample_idx}_ch{channel_idx}.npy"), x_np)
+        # Save periods
+        np.save(os.path.join(save_path, f"periods_sample{sample_idx}_ch{channel_idx}.npy"), periods)
+
+        # -------------------------------
+        # Build and save 2D representations
+        # -------------------------------
+        representations = []
+
+        for i, p in enumerate(periods):
+            f = T // p  # number of columns
+
+            # truncate signal to fit exact reshape
+            truncated = x_np[:p * f]
+
+            # reshape to [p, f]
+            x_2d = truncated.reshape(p, f)
+
+            representations.append(x_2d)
+
+            # save each matrix
+            np.save(
+                os.path.join(
+                    save_path,
+                    f"x2d_sample{sample_idx}_ch{channel_idx}_period{p}.npy"
+                ),
+                x_2d
+            )
+
+        print("Saved 2D representations to:", save_path)
+        print("Periods:", periods)
+
+
+
+
+    def compute_period_histogram(self, setting, split='train', k=6, max_batches=None):
+        """
+        Compute multi-periodicity histogram.
+
+        This function:
+        - iterates over dataset windows (train/val/test)
+        - applies FFT_for_Period
+        - collects top-k periods
+        - builds normalized histogram
+        - saves result into checkpoint folder
+
+        Parameters:
+        - setting: experiment name (used for saving path)
+        - split: 'train' | 'val' | 'test'
+        - k: number of top frequencies
+        - max_batches: optional debug limit
+        """
+
+        data_loader = self._get_data(flag=split)[1]
+
+        # storage for all extracted periods
+        all_periods = []
+
+        self.model.eval() 
+
+        with torch.no_grad():
+            for i, (batch_x, batch_y) in enumerate(data_loader):
+
+                # batch_x: [B, seq_len, C]
+                batch_x = batch_x.float().to(self.device)
+
+                # ---- FFT-based period extraction ----
+                xf = torch.fft.rfft(batch_x, dim=1)
+
+                # xf: [B, F, C]
+
+                amplitude = abs(xf).mean(-1)  # [B, F]
+
+                # remove DC
+                amplitude[:, 0] = 0
+
+                # top-k per sample
+                top_list = torch.topk(amplitude, k, dim=1).indices  # [B, k]
+
+                # convert frequency -> period
+                T = batch_x.shape[1]
+                periods = T // top_list.cpu().numpy()   # shape [B, k]
+
+                all_periods.extend(periods.reshape(-1).tolist())
+
+                if max_batches is not None and i >= max_batches:
+                    break
+
+        all_periods = np.array(all_periods).reshape(-1)
+
+        # ---- build histogram ----
+        # count occurrences of each period length
+        unique, counts = np.unique(all_periods, return_counts=True)
+
+        density = counts / counts.sum()
+
+        result = {
+            "periods": unique,
+            "density": density,
+            "raw_periods": all_periods
+        }
+
+        # ---- save ----
+        save_path = os.path.join(self.args.checkpoints, setting)
+        os.makedirs(save_path, exist_ok=True)
+
+        np.save(os.path.join(save_path, "period_hist.npy"), result)
+
+        print(f"[Periodicity] saved histogram to {save_path}/period_hist.npy")

@@ -38,6 +38,13 @@ def main(args):
         print("\n================ PREDICTING SINGLE SAMPLES ================\n")
         exp.predict_samples(setting, num_batches=1, load_best=True)
 
+    if args.extract:
+        print("\n================ 2D REPR. EXTRACTION ================\n")
+        exp.extract_2d_representations(setting, sample_idx=0, channel_idx=4, top_k=5)        
+
+    if args.periods_hist:
+        print("\n================ PERIODS HISTOGRAM ================\n")
+        exp.compute_period_histogram(setting, split='train', k=6, max_batches=None)   
 
 
 
@@ -54,6 +61,8 @@ if __name__ == "__main__":
     parser.add_argument("--train", action="store_true", help="Train the model")  # whether to train the model
     parser.add_argument("--test", action="store_true", help="Test the model")    # whether to test the model (after loading the best checkpoint)
     parser.add_argument("--predict_samples", action="store_true", help="Predict single samples")  # whether to predict single samples (for plotting purposes)
+    parser.add_argument("--extract", action="store_true", help="Extract 2D representations") 
+    parser.add_argument("--periods_hist", action="store_true", help="Compute multi-periodicity histogram") 
 
     # ======================
     # DATA
