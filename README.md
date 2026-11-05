@@ -32,6 +32,8 @@ The experiments include comparisons of training and validation losses, test fore
 
 ## Results
 
+![](results/3D_test_losses_values.png)
+
 The experiments show that TimesNet generally achieves lower forecasting errors than the TCN baseline across the tested configurations.
 
 The results highlight the advantages of explicitly modeling periodic structures through 2D representations, particularly for datasets with recurring temporal patterns. Increasing the number of selected frequencies further improves forecasting accuracy, although at the cost of increased computational time.
