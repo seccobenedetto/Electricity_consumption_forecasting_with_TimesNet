@@ -1,6 +1,7 @@
 # FILES TO BE IGNORED
 iizuka_docker/images/
 checkpoints/
+Dataset_inspection.ipynb
 
 # Byte-compiled / optimized / DLL files
 **/__pycache__/
