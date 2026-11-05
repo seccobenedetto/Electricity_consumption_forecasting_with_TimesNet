@@ -59,5 +59,61 @@ The project is based on the following research works:
 
 This project was developed as part of the Neural Networks and Deep Learning course at the University of Padova.
 
-## Instructions
-python -u run.py --train --test | tee output.log
+## Running Experiments
+
+Experiments are launched through `run.py`. The script supports both TimesNet and TCN and allows you to train and evaluate models, generate sample predictions, and extract additional analyses.
+
+### Train and test a model
+
+To train a TimesNet model using the default configuration and then evaluate it on the test set:
+
+```bash
+python run.py --train --test
+```
+
+To use the TCN baseline instead:
+
+```bash
+python run.py --train --test --model TCN
+```
+
+### Configure an experiment
+
+The main parameters can be specified through command-line arguments:
+
+| Argument | Description | Default |
+|---|---|---:|
+| `--model` | Model architecture (`TimesNet` or `TCN`) | `TimesNet` |
+| `--seq_len` | Input sequence length | 96 |
+| `--pred_len` | Prediction horizon | 96 |
+| `--d_model` | Hidden dimension | 64 |
+| `--e_layers` | Number of model layers | 2 |
+| `--top_k` | Number of dominant periods used by TimesNet | 5 |
+| `--batch_size` | Training batch size | 32 |
+| `--learning_rate` | Initial learning rate | 0.0001 |
+| `--train_epochs` | Maximum number of training epochs | 10 |
+
+For example, to train TimesNet with an input length of 192, a prediction horizon of 336, and a hidden dimension of 128:
+
+```bash
+python run.py --train --test --seq_len 192 --pred_len 336 --d_model 128
+```
+
+### Additional analysis
+
+The script also provides options for inspecting model predictions and periodicity:
+
+```bash
+# Generate predictions for a sample batch
+python run.py --predict_samples
+
+# Extract 2D representations from TimesNet
+python run.py --extract
+
+# Compute the multi-periodicity histogram
+python run.py --periods_hist
+```
+
+These analysis options use the corresponding experiment configuration and load the best available checkpoint. Therefore, train the model first if the required checkpoint does not already exist.
+
+Checkpoints are saved in `./checkpoints/` by default. The dataset location can be changed using `--root_path` and `--data_path`.
